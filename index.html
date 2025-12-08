@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Node.js Speed Test Client</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        text-align: center;
+        padding: 50px;
+      }
+      button {
+        padding: 15px 30px;
+        font-size: 18px;
+        cursor: pointer;
+      }
+      #results {
+        margin-top: 20px;
+        font-size: 20px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🚀 Concurrent Download Speed Test</h1>
+    <p>Testing speed against: <code>http://localhost:333/download</code></p>
+    <button id="testButton" onclick="startConcurrentTest()">
+      Start Concurrent Test
+    </button>
+
+    <div id="results">
+      <p>Status: Ready</p>
+      <p>Speed: -- Mbps</p>
+    </div>
+
+    <script>
+      // NOTE: This must match the FILE_SIZE_BYTES you set in your Node.js server!
+      const SINGLE_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
+      const NUM_CONCURRENT_TESTS = 3; // Test 4 files simultaneously
+
+      // Total data to be transferred
+      const TOTAL_SIZE_BYTES = SINGLE_FILE_SIZE_BYTES * NUM_CONCURRENT_TESTS;
+      const TOTAL_SIZE_MBITS = (TOTAL_SIZE_BYTES * 8) / (1024 * 1024); // Size in Megabits (Mbits)
+
+      const DOWNLOAD_URL = "https://cuddly-cities-drive.loca.lt/download";
+      const resultDiv = document.getElementById("results");
+      const testButton = document.getElementById("testButton");
+
+      async function downloadSingleFile(url) {
+        const response = await fetch(url, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        // Consume the stream entirely
+        await response.blob();
+      }
+
+      async function startConcurrentTest() {
+        testButton.disabled = true;
+        resultDiv.innerHTML = `<p style="color: blue;">Status: Starting ${NUM_CONCURRENT_TESTS} concurrent downloads...</p><p>Speed: Calculating...</p>`;
+
+        // 1. Prepare multiple download promises
+        const downloadPromises = [];
+        for (let i = 0; i < NUM_CONCURRENT_TESTS; i++) {
+          // Create a promise for each download
+          downloadPromises.push(downloadSingleFile(DOWNLOAD_URL));
+        }
+
+        // 2. Start the Timer
+        const startTime = performance.now();
+
+        try {
+          // 3. Run all downloads simultaneously using Promise.all
+          // The timer will stop only after the LAST file finishes downloading.
+          await Promise.all(downloadPromises);
+
+          // 4. Stop the Timer
+          const endTime = performance.now();
+
+          // 5. Calculate Speed based on TOTAL data transferred
+          const totalTimeSeconds = (endTime - startTime) / 1000;
+
+          // Speed is (Total Megabits) / (Total Time in Seconds)
+          const speedMbps = TOTAL_SIZE_MBITS / totalTimeSeconds;
+
+          // 6. Display Results
+          resultDiv.innerHTML = `
+                    <p style="color: green;">Status: Test Complete! (${NUM_CONCURRENT_TESTS} files)</p>
+                    <p>Total Data Transferred: ${(
+                      TOTAL_SIZE_BYTES /
+                      (1024 * 1024)
+                    ).toFixed(0)} MB</p>
+                    <p>Average Speed: <strong>${speedMbps.toFixed(
+                      2
+                    )} Mbps</strong></p>
+                `;
+        } catch (error) {
+          console.error("Concurrent test failed:", error);
+          resultDiv.innerHTML = `<p style="color: red;">Status: Error! Check console/server.</p>`;
+        } finally {
+          testButton.disabled = false;
+        }
+      }
+    </script>
+  </body>
+</html>
