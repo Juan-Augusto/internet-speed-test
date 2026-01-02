@@ -2,6 +2,8 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const port = 333;
+const crypto = require('crypto');
+
 
 app.use(cors());
 const FILE_SIZE = 100 * 1024 * 1024; // (100MB)
@@ -14,6 +16,7 @@ app.get("/download", (req, res) => {
     "Content-Length": FILE_SIZE,
     "Accept-Ranges": "none",
     "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Access-Control-Expose-Headers": "Content-Length",
     Pragma: "no-cache",
     Expires: "0",
   });
@@ -44,6 +47,41 @@ app.get("/download", (req, res) => {
 
   sendChunk();
 });
+
+
+app.post("/upload", (req, res) => {
+  res.set({
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+  });
+
+  req.on('data', (chunk) => {
+
+  });
+
+  req.on('end', () => {
+    res.status(200).send({ status: 'ok' });
+  });
+
+  req.on('error', (err) => {
+    console.error("Upload stream error:", err);
+    res.status(500).end();
+  });
+});
+
+app.head("/ping", (req, res) => {
+  res.set({
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+  });
+
+  res.status(204).end(); 
+});
+
+
+
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
